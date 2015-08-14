@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+
+# Copyright 2015 Philipp Winter <phw@nymity.ch>
+#
+# This file is part of herbivore.
+#
+# exitmap is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# exitmap is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with exitmap.  If not, see <http://www.gnu.org/licenses/>.
+"""
+Obtains consensuses from CollecTor.  Designed to run as cron(8) job.
+"""
+
+import os
+import sys
+import urllib.request
+import urllib.error
+import logging
+import errno
+import configparser
+import datetime
+
+import logger
+
+log = logger.log
+
+CONFIG_FILE = "config.cfg"
+
+
+def load_config():
+    """
+    Parse and return configuration file.
+    """
+
+    log.info("Loading configuration file.")
+
+    config = configparser.ConfigParser()
+    try:
+        config.read_file(open(CONFIG_FILE))
+    except FileNotFoundError as err:
+        log.error("Configuration file %s does not exist." % CONFIG_FILE)
+        sys.exit(1)
+
+    return config
+
+
+def initialise(config):
+    """
+    Setup tasks that must be completed before running the tool.
+    """
+
+    log.info("Running setup tasks.")
+
+    try:
+        os.makedirs(config["local"]["Consensuses"])
+    except os.error as err:
+        if err.errno != errno.EEXIST:
+            log.error(err)
+            sys.exit(2)
+
+
+def get_consensus_url(consensus_dir_url):
+    """
+    Returns the URL of the most recent consensus.
+
+    This requires an accurate system clock.  Otherwise, we might request a
+    consensus that is not published yet.
+    """
+
+    # An example consensus file name is 2015-08-12-21-00-00-consensus.  We
+    # subtract 15 minutes from the current time to account for the time it
+    # takes to generate a new consensus.
+
+    time_delta = datetime.timedelta(minutes=15)
+    current_utc_time = datetime.datetime.utcnow() - time_delta
+
+    file_name = current_utc_time.strftime("%Y-%m-%d-%H") + "-00-00-consensus"
+
+    return os.path.join(consensus_dir_url, file_name)
+
+
+def main():
+    """
+    Entry point.
+    """
+
+    config = load_config()
+    initialise(config)
+
+    consensus_url = get_consensus_url(config["url"]["ConsensusDirURL"])
+    log.info("Attempting to fetch consensus from <%s>." % consensus_url)
+    try:
+        consensus_blurb = urllib.request.urlopen(consensus_url).read()
+    except urllib.error.URLError as err:
+        log.error(err)
+        return 3
+
+    file_name = os.path.join(config["local"]["Consensuses"],
+                             os.path.basename(consensus_url))
+    with open(file_name, "wb") as fd:
+        fd.write(consensus_blurb)
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
