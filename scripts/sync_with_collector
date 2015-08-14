@@ -68,7 +68,7 @@ def initialise(config):
             sys.exit(2)
 
 
-def get_consensus_url(consensus_dir_url):
+def get_consensus_url(consensus_dir_url, current_utc_time):
     """
     Returns the URL of the most recent consensus.
 
@@ -81,11 +81,33 @@ def get_consensus_url(consensus_dir_url):
     # takes to generate a new consensus.
 
     time_delta = datetime.timedelta(minutes=15)
-    current_utc_time = datetime.datetime.utcnow() - time_delta
+    current_utc_time = current_utc_time - time_delta
 
     file_name = current_utc_time.strftime("%Y-%m-%d-%H") + "-00-00-consensus"
 
     return os.path.join(consensus_dir_url, file_name)
+
+
+def save_consensus(consensus_blurb, absolute_path):
+    """
+    Save newly obtained consensus blurb to disk.
+
+    For simplicity, we are mimicing the directory structure of CollecTor's
+    archived consensuses, i.e.:
+
+        CONSENSUS_PATH/consensuses-2007-10/30/2007-10-30-10-00-00-consensus
+    """
+
+    try:
+        os.makedirs(os.path.dirname(absolute_path))
+    except os.error as err:
+        if err.errno != errno.EEXIST:
+            log.error(err)
+            sys.exit(4)
+
+    log.info("Writing consensus to: %s" % absolute_path)
+    with open(absolute_path, "wb") as fd:
+        fd.write(consensus_blurb)
 
 
 def main():
@@ -96,7 +118,10 @@ def main():
     config = load_config()
     initialise(config)
 
-    consensus_url = get_consensus_url(config["url"]["ConsensusDirURL"])
+    current_utc_time = datetime.datetime.utcnow()
+
+    consensus_url = get_consensus_url(config["url"]["ConsensusDirURL"],
+                                      current_utc_time)
     log.info("Attempting to fetch consensus from <%s>." % consensus_url)
     try:
         consensus_blurb = urllib.request.urlopen(consensus_url).read()
@@ -104,10 +129,11 @@ def main():
         log.error(err)
         return 3
 
-    file_name = os.path.join(config["local"]["Consensuses"],
-                             os.path.basename(consensus_url))
-    with open(file_name, "wb") as fd:
-        fd.write(consensus_blurb)
+    file_name = os.path.basename(consensus_url)
+    dir_name = os.path.join(config["local"]["Consensuses"],
+                            current_utc_time.strftime("consensus-%Y-%m/%d/"))
+    absolute_path = os.path.join(dir_name, file_name)
+    save_consensus(consensus_blurb, absolute_path)
 
     return 0
 
