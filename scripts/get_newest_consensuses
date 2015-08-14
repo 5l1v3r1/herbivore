@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# Copyright 2015 Philipp Winter <phw@nymity.ch>
+#
+# This file is part of herbivore.
+#
+# exitmap is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# exitmap is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with exitmap.  If not, see <http://www.gnu.org/licenses/>.
+
+config_file="config.cfg"
+
+if [ "$#" -lt 1 ]
+then
+    echo
+    echo "Usage: $0 NUM_NEWEST_CONSENSUSES"
+    echo
+    exit 1
+fi
+
+num="$1"
+
+# Try to parse config.cfg.
+
+while IFS="= " read var val
+do
+    if [[ "$var" == \[*] ]]
+    then
+        section="$var"
+    elif [[ $val ]]
+    then
+        declare "$var$section=$val"
+    fi
+done < "$config_file"
+
+# Now that we know where the consensus archives are, find most recent n
+# consensuses.
+
+find "$Consensuses" -type f | sort | tail -"$num"
