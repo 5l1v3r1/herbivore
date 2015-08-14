@@ -33,7 +33,7 @@ import logger
 
 log = logger.log
 
-CONFIG_FILE = "config.cfg"
+CONFIG_FILE = os.path.join(os.path.dirname(__file__), "../config.cfg")
 
 
 def load_config():
@@ -49,6 +49,15 @@ def load_config():
     except FileNotFoundError as err:
         log.error("Configuration file %s does not exist." % CONFIG_FILE)
         sys.exit(1)
+
+    # Use relative paths relative to the config file's location.
+
+    for key, path in config["local"].items():
+        if not os.path.isabs(path):
+            config["local"][key] = os.path.join(os.path.dirname(__file__),
+                                                path)
+            log.info("Turning \"%s\" path into \"%s\"." %
+                     (path, config["local"][key]))
 
     return config
 
@@ -88,7 +97,7 @@ def get_consensus_url(consensus_dir_url, current_utc_time):
     return os.path.join(consensus_dir_url, file_name)
 
 
-def save_consensus(consensus_blurb, absolute_path):
+def save_consensus(consensus_blurb, file_path):
     """
     Save newly obtained consensus blurb to disk.
 
@@ -99,14 +108,14 @@ def save_consensus(consensus_blurb, absolute_path):
     """
 
     try:
-        os.makedirs(os.path.dirname(absolute_path))
+        os.makedirs(os.path.dirname(file_path))
     except os.error as err:
         if err.errno != errno.EEXIST:
             log.error(err)
             sys.exit(4)
 
-    log.info("Writing consensus to: %s" % absolute_path)
-    with open(absolute_path, "wb") as fd:
+    log.info("Writing consensus to: %s" % file_path)
+    with open(file_path, "wb") as fd:
         fd.write(consensus_blurb)
 
 
@@ -132,8 +141,8 @@ def main():
     file_name = os.path.basename(consensus_url)
     dir_name = os.path.join(config["local"]["Consensuses"],
                             current_utc_time.strftime("consensus-%Y-%m/%d/"))
-    absolute_path = os.path.join(dir_name, file_name)
-    save_consensus(consensus_blurb, absolute_path)
+    file_path = os.path.join(dir_name, file_name)
+    save_consensus(consensus_blurb, file_path)
 
     return 0
 

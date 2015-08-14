@@ -17,7 +17,8 @@
 # You should have received a copy of the GNU General Public License
 # along with exitmap.  If not, see <http://www.gnu.org/licenses/>.
 
-config_file="config.cfg"
+script_dir=$(dirname "$0")
+config_file="${script_dir}/../config.cfg"
 
 if [ "$#" -lt 1 ]
 then
@@ -42,7 +43,15 @@ do
     fi
 done < "$config_file"
 
+# Turn relative into absolute path.
+
+if [[ "$Consensuses" != /* ]]
+then
+    Consensuses="${script_dir}/${Consensuses}"
+fi
+
 # Now that we know where the consensus archives are, find most recent n
 # consensuses.
 
+mkdir -p "$Consensuses"
 find "$Consensuses" -type f | sort | tail -"$num"
