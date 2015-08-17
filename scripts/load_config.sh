@@ -30,6 +30,11 @@ do
     fi
 done < "$config_file"
 
+log() {
+    msg="$1"
+    printf "[$(date -u --rfc-3339=seconds)] ${msg}\n" | tee -a "$LogFile"
+}
+
 # Turn relative into absolute paths.
 make_absolute() {
 
