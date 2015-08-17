@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # Copyright 2015 Philipp Winter <phw@nymity.ch>
 #
 # This file is part of herbivore.
@@ -17,25 +15,33 @@
 # You should have received a copy of the GNU General Public License
 # along with exitmap.  If not, see <http://www.gnu.org/licenses/>.
 
-if [ "$#" -lt 1 ]
-then
-    echo
-    echo "Usage: $0 NUM_NEWEST_CONSENSUSES"
-    echo
-    exit 1
-fi
+script_dir=$(dirname "$0")
+config_file="${script_dir}/../config.cfg"
 
-num="$1"
+# Try to parse config.cfg.
+while IFS="= " read var val
+do
+    if [[ "$var" == \[*] ]]
+    then
+        section="$var"
+    elif [[ $val ]]
+    then
+        declare "$var$section=$val"
+    fi
+done < "$config_file"
 
-source load_config.sh
+# Turn relative into absolute paths.
+make_absolute() {
 
-# Now that we know where the consensus archives are, find most recent n
-# consensuses.
+    argument="$1"
 
-if [ -z "$Consensuses" ]
-then
-    echo "Variable 'Consensuses' is unset.  Is it not set in 'config.cfg?'"
-    exit 1
-fi
-mkdir -p "$Consensuses"
-find "$Consensuses" -type f | sort | tail -"$num"
+    if [[ "$argument" != /* ]]
+    then
+        argument="${script_dir}/${argument}"
+    fi
+
+    echo "$argument"
+}
+
+Consensuses=$(make_absolute "$Consensuses")
+LogFile=$(make_absolute "$LogFile")
