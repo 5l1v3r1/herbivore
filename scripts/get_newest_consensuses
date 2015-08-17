@@ -17,6 +17,11 @@
 # You should have received a copy of the GNU General Public License
 # along with exitmap.  If not, see <http://www.gnu.org/licenses/>.
 
+script_dir=$(dirname "$0")
+load_config="${script_dir}/load_config.sh"
+
+source "$load_config"
+
 if [ "$#" -lt 1 ]
 then
     echo
@@ -26,8 +31,6 @@ then
 fi
 
 num="$1"
-
-source load_config.sh
 
 # Now that we know where the consensus archives are, find most recent n
 # consensuses.
